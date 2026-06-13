@@ -21,8 +21,8 @@ ENV/
 # Environment Variables
 # =========================
 .env
-.env.*
-!.env.example
+
+
 
 # =========================
 # Packaging
@@ -76,3 +76,5 @@ Thumbs.db
 # =========================
 *.zip
 temp.py
+data/
+docs/
