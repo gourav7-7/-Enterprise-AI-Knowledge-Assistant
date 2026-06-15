@@ -64,6 +64,18 @@ class DocIngestor:
 
         return {"file": path.name, "pages": len(pages), "chunks": len(chunks)}
 
+    def ingestDirectory(self, dir_path: str | Path) -> list[dict]:
+        directory = Path(dir_path)
+        if not directory.is_dir():
+            raise DocumentNotFoundError(f"Not a directory; {directory}")
+
+        pdfs = sorted(directory.glob("*.pdf"))
+        if not pdfs:
+            raise DocumentNotFoundError(f"No PDF files found in {directory}")
+
+        logger.info("Ingesting %d PDF(s) from %s", len(pdfs), directory)
+        return [self.ingest(pdf) for pdf in pdfs]
+
 
     def reset(self) -> None:
 
@@ -75,3 +87,32 @@ class DocIngestor:
         self._store = self._build_store()
 
 
+def _cli() -> None:
+    import argparse
+    parser = argparse.ArgumentParser(
+        description = "INgest a PDF file or a directory of PDFs into the vectore store.")
+    parser.add_argument("path", help= "Path to a .pdf file or a directory of PDFs")
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Clear the collection before ingesting (avoids duplicates)"
+    )
+    args = parser.parse_args()
+
+    ingestor = DocIngestor()
+    if args.reset:
+        ingestor.reset()
+
+    target = Path(args.path)
+    if target.is_dir():
+        res = ingestor.ingestDirectory(target)
+        total = sum(r["chunks"] for r in res)
+        print(f"Ingested {len(res)} file(s), {total} chunks total: ")
+        for r in res:
+            print(f" -{r['file']}: {r['pages']} pages -> {r['chunks']} chunks")
+    else:
+        r = ingestor.ingest(target)
+        print(f"Ingested {r['file']}: {r['pages']} pages -> {r['chunks']} chunks")
+
+if __name__ == "__main__":
+    _cli()
