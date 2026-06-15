@@ -4,7 +4,7 @@ Intelligent document Q&A system with RAG, authentication, evaluation, and CI/CD.
 
 **Current milestone: Task 1** — Python environment, LangChain chain, OpenAI integration, multi-turn chatbot.
 
-## Tech stack (planned)
+## Tech stack
 
 | Layer | Technology |
 |-------|------------|
@@ -87,18 +87,3 @@ python scripts/chat_cli.py
 ```powershell
 pytest tests/ -v
 ```
-
-## Task 1 deliverables
-
-| Requirement | Location |
-|-------------|----------|
-| Python venv + dependencies | `gaproj/` or `.venv/`, `pyproject.toml` |
-| Project structure | `app/`, `scripts/`, `tests/` |
-| `.env` / secrets handling | `.env.example`, `.gitignore` |
-| First OpenAI call | `scripts/test_openai.py` |
-| LangChain PromptTemplate + LLMChain + ChatModels | `app/chains/qa_chain.py` |
-| Multi-turn chatbot | `app/chatbot/multi_turn.py`, `scripts/chat_cli.py` |
-
-## License
-
-MIT (or your organisation's policy).
