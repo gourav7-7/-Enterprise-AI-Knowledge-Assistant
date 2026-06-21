@@ -28,6 +28,7 @@ FastAPI backend  ── auth · upload · query · history · feedback
         └── SQLAlchemy → SQLite / PostgreSQL  (users, chat_history, feedback)
 ```
 
+
 ## Tech stack
 
 | Layer | Technology |
@@ -135,6 +136,7 @@ python -c "import secrets; print(secrets.token_hex(32))"
 ### 3. Run the API
 
 ```powershell
+
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -202,3 +204,7 @@ pytest -v                # no API key required for the included tests
 - [ ] Wire the Streamlit UI to the authenticated API
 - [ ] Docker + docker-compose (with PostgreSQL service)
 - [ ] CI/CD (GitHub Actions) and deployment
+=======
+pytest tests/ -v
+```
+>>>>>>> c45239e2877ff826ead9c1028d28a7ca587e5767
