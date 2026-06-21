@@ -207,4 +207,3 @@ pytest -v                # no API key required for the included tests
 =======
 pytest tests/ -v
 ```
->>>>>>> c45239e2877ff826ead9c1028d28a7ca587e5767
