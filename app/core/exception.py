@@ -49,6 +49,13 @@ class RetrievalError(AppError):
     status_code = 500
     error_code = "retrieval_error"
 
+class AuthError(AppError):
+    status_code = 401
+    error_code = "authentication_error"
+
+class ConflictError(AppError):
+    status_code = 409
+    error_code = "conflict"
 
 def register_exception_handlers(app: Any) -> None:
 

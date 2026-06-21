@@ -12,26 +12,42 @@ license = { text = "MIT" }
 keywords = ["rag", "langchain", "openai", "knowledge-base", "fastapi"]
 
 dependencies = [
+    # Web / API
+    "fastapi",
+    "uvicorn[standard]",
+    "python-multipart",
+    "pydantic",
+    
+    # Config
     "python-dotenv",
-    "openai",
+    
+    # Auth
+    "pyjwt",
+    "pwdlib[argon2]",
+    
+    # Database
+    "sqlalchemy",
+    "psycopg[binary]",
+    
+    # RAG stack
     "langchain",
     "langchain-core",
     "langchain-openai",
     "langchain-community",
-    "langchain_chroma",
+    "langchain-chroma",
+    "langchain-text-splitters",
+    "chromadb",
     "pypdf",
-    "pymupdf",
-    "sentence-transformers",
-    "streamlit",
-    "fastapi",
-    "faiss-cpu",
-    "chromadb"
-]
+    "openai",
+    
+    # Evaluation
+    "ragas>=0.2,<0.3"
+    ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
-    "pytest-mock>=3.0",
+    "pytest-mock>=3.0"
 ]
 
 [tool.hatch.build.targets.wheel]

@@ -10,6 +10,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from app.config import Settings, get_settings
 from app.core.exception import DocumentNotFoundError, IngestionError
 from app.core.logger import get_logger
+import shutil
  
 logger = get_logger(__name__)
 
@@ -82,6 +83,7 @@ class DocIngestor:
         logger.warning("Resetting collection '%s'",self._settings.collection_name)
         try:
             self._store.delete_collection()
+            shutil.rmtree("data/chroma")
         except Exception as e:
             logger.debug("delete_collection ignored: %s", e)
         self._store = self._build_store()
