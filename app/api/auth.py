@@ -1,4 +1,4 @@
-"""Auth endpoints: register, login (JWT), logout, me."""
+# Auth endpoints: register, login (JWT), logout, me
 
 from __future__ import annotations
 

@@ -12,4 +12,4 @@ class FeedbackRequest(BaseModel):
  
 class FeedbackResponse(BaseModel):
     status: str
-    id: str
+    id: int

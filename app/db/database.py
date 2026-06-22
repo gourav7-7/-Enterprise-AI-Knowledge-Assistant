@@ -28,7 +28,6 @@ class Base(DeclarativeBase):
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
-    # check_same_thread is a SQLite-only option (FastAPI uses threads).
     connect_args={"check_same_thread": False} if _IS_SQLITE else {},
 )
 
@@ -37,7 +36,7 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False
 
 def init_db(retries: int = 10, delay: float = 2.0) -> None:
     """Create tables. Retries because in Docker the app can start before Postgres."""
-    from app.db import models  # noqa: F401  (import registers models on Base.metadata)
+    from app.db import models
 
     last_error: Exception | None = None
     for attempt in range(1, retries + 1):

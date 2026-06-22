@@ -2,13 +2,14 @@
 
 A production-grade document Q&A system built with Retrieval-Augmented Generation (RAG). Upload PDFs, ask questions in natural language, and get answers grounded in your documents — with source citations, JWT-secured access, per-user chat history, and automated answer-quality evaluation.
 
-> **Status:** Authenticated FastAPI backend is feature-complete and runs end-to-end on a local database. Remaining work: wiring the Streamlit UI to the API, Docker containerisation, and CI/CD.
+> **Status:** Authenticated FastAPI backend and a Streamlit UI (HTTP client of the API) run end-to-end on a local database. Remaining work: Docker containerisation and CI/CD.
 
 ## What it does
 
 - **RAG pipeline** — PDF → text → chunked → embedded → stored in ChromaDB; questions are answered using only the retrieved context, with citations (source file + page).
-- **Conversational memory** — follow-up questions are understood in context via a history-aware retriever.
+- **Conversational memory** — follow-up questions are understood in context via a history-aware retriever (engine-level; the API exposes a single-shot query endpoint).
 - **Authentication** — register / login / logout with JWT; passwords hashed with Argon2. Protected endpoints reject unauthenticated requests.
+- **Streamlit UI** — a thin front end that talks to the API over HTTP (login, upload, chat with citations, history, feedback); holds no business logic or secrets.
 - **Persistence** — users, chat history, and feedback stored via SQLAlchemy (SQLite locally; PostgreSQL-ready through a single connection-string change).
 - **Evaluation** — RAGAS scores answer **faithfulness** and **relevancy** over a fixed test set.
 - **Robustness** — structured logging, typed exception handling with clean JSON errors, retry/backoff on LLM calls, and an async query path.
@@ -16,18 +17,15 @@ A production-grade document Q&A system built with Retrieval-Augmented Generation
 ## Architecture
 
 ```
-Client (Streamlit UI / Swagger / any HTTP client)
-        │  HTTP + JWT
-        ▼
-FastAPI backend  ── auth · upload · query · history · feedback
-        │
-        ├── RAG engine (LangChain): ingestion → retriever → chain
-        │        ├── ChromaDB        (document vectors)
-        │        └── OpenAI API      (embeddings + LLM)
-        │
-        └── SQLAlchemy → SQLite / PostgreSQL  (users, chat_history, feedback)
+Streamlit UI  ── HTTP + JWT ──►  FastAPI backend
+(thin client)                    │  auth · upload · query · history · feedback
+                                 │
+                                 ├── RAG engine (LangChain): ingestion → retriever → chain
+                                 │        ├── ChromaDB        (document vectors)
+                                 │        └── OpenAI API      (embeddings + LLM)
+                                 │
+                                 └── SQLAlchemy → SQLite / PostgreSQL  (users, chat_history, feedback)
 ```
-
 
 ## Tech stack
 
@@ -40,7 +38,7 @@ FastAPI backend  ── auth · upload · query · history · feedback
 | Auth | PyJWT (JWT), pwdlib (Argon2) |
 | Persistence | SQLAlchemy → SQLite (local) / PostgreSQL (production) |
 | Evaluation | RAGAS (faithfulness, answer relevancy) |
-| UI | Streamlit |
+| UI | Streamlit (HTTP client of the API) |
 | Planned ops | Docker, docker-compose, GitHub Actions |
 
 ## Project structure
@@ -74,7 +72,7 @@ AI Knowledge Assistant/
 │   ├── chains/qa_chain.py      # Early LangChain LLMChain (foundations)
 │   └── chatbot/multi_turn.py   # Multi-turn chatbot (foundations)
 ├── frontend/
-│   └── streamlit_app.py        # UI (standalone; API wiring in progress)
+│   └── streamlit_app.py        # UI — pure HTTP client of the FastAPI backend
 ├── scripts/
 │   ├── test_openai.py          # OpenAI API smoke test
 │   ├── run_chain.py            # LangChain chain demo
@@ -97,7 +95,8 @@ Dependencies are declared in `pyproject.toml` (PEP 621). Install in editable mod
 # Windows (PowerShell) — project root
 python -m venv gaproj
 .\gaproj\Scripts\Activate.ps1
-pip install -e ".[dev]"          # backend + dev tools (pytest)          
+pip install -e ".[dev]"          # backend + dev tools (pytest)
+pip install streamlit requests   # UI (not declared in pyproject)
 ```
 
 ```bash
@@ -105,6 +104,7 @@ pip install -e ".[dev]"          # backend + dev tools (pytest)
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
+pip install streamlit requests
 ```
 
 ### 2. Environment variables
@@ -133,14 +133,21 @@ python -c "import secrets; print(secrets.token_hex(32))"
 
 `.env` is gitignored — never commit it.
 
-### 3. Run the API
+### 3. Run the backend
 
 ```powershell
-
 uvicorn app.main:app --reload --port 8000
 ```
 
-Open the interactive docs at **http://127.0.0.1:8000/docs**. On first start the database tables are created automatically.
+Interactive API docs: **http://127.0.0.1:8000/docs**. Tables are created automatically on first start.
+
+### 4. Run the UI (separate terminal)
+
+```powershell
+streamlit run frontend/streamlit_app.py
+```
+
+The UI targets `http://localhost:8000` by default; override with the `API_BASE_URL` env var. Log in (or register), upload a PDF, and chat.
 
 ## API endpoints
 
@@ -157,14 +164,6 @@ Open the interactive docs at **http://127.0.0.1:8000/docs**. On first start the 
 | POST | `/feedback`      | ✓   | Rate an answer |
 
 **Quick end-to-end test in `/docs`:** register → click **Authorize** (login) → `/upload` a PDF → `/query` → `/history` → `/feedback`.
-
-## Streamlit UI
-
-```powershell
-streamlit run frontend/streamlit_app.py
-```
-
-> The UI currently runs as a standalone demo that calls the RAG engine in-process (no login). Rewiring it to consume the authenticated FastAPI backend over HTTP is in progress.
 
 ## Evaluation (RAGAS)
 
@@ -195,15 +194,12 @@ pytest -v                # no API key required for the included tests
 
 - [x] LangChain foundations: chain, multi-turn chatbot
 - [x] RAG pipeline: PDF ingestion, ChromaDB, retrieval with citations
-- [x] Conversational RAG (history-aware retriever) + Streamlit demo
+- [x] Conversational RAG (history-aware retriever)
 - [x] Modular, callable ingestion module + unit tests
 - [x] FastAPI backend: upload, query, health, feedback
 - [x] JWT authentication; token-protected endpoints
 - [x] Persistence: users, chat history, feedback (SQLite; PostgreSQL-ready)
 - [x] RAGAS evaluation (faithfulness, answer relevancy)
-- [ ] Wire the Streamlit UI to the authenticated API
+- [x] Streamlit UI wired to the authenticated API
 - [ ] Docker + docker-compose (with PostgreSQL service)
 - [ ] CI/CD (GitHub Actions) and deployment
-=======
-pytest tests/ -v
-```

@@ -25,7 +25,7 @@ def get_ingestor() -> DocIngestor:
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 def get_current_user(token: str = Depends(oauth2_scheme),db: Session = Depends(get_db)) -> User:
-    user_id = decode_access_token(token)  # raises AuthError if missing/invalid/expired
+    user_id = decode_access_token(token)
     user = crud.get_user_by_id(db, int(user_id))
     if user is None:
         raise AuthError("User not found")
