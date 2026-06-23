@@ -1,13 +1,19 @@
 from __future__ import annotations
 
-from langchain.chains import create_retrieval_chain, create_history_aware_retriever
-from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_classic.chains import (
+    create_retrieval_chain,
+    create_history_aware_retriever,
+)
+from langchain_classic.chains.combine_documents import (
+    create_stuff_documents_chain,
+)
+
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
 
 from app.config import Settings, get_settings
 from app.core.logger import get_logger
-from app.rag.retriever import Retriver
+from app.rag.retriever import Retriever
 
 logger = get_logger(__name__)
 
@@ -54,7 +60,7 @@ class RAGChain:
                 ("human", "{input}"),
             ]
         )
-        retriever = Retriver(self._settings).as_lc_retriever()
+        retriever = Retriever(self._settings).as_lc_retriever()
         doc_chain = create_stuff_documents_chain(llm, prompt)
         self._chain = create_retrieval_chain(retriever, doc_chain)
 
@@ -74,7 +80,7 @@ class ConversationalRAGChain:
     def __init__(self, settings: Settings | None = None) -> None:
         self._settings = settings or get_settings()
         llm = _build_llm(self._settings)
-        base_retriever = Retriver(self._settings).as_lc_retriever()
+        base_retriever = Retriever(self._settings).as_lc_retriever()
 
         contextualize_prompt = ChatPromptTemplate.from_messages(
             [

@@ -1,0 +1,34 @@
+# Web / API
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+
+# UI (Streamlit talks to the API over HTTP)
+streamlit
+requests
+
+# Config
+python-dotenv
+
+# Auth
+pyjwt
+pwdlib[argon2]
+
+# Database
+sqlalchemy
+psycopg[binary]
+
+# RAG stack
+langchain
+langchain-core
+langchain-openai
+langchain-community
+langchain-chroma
+langchain-text-splitters
+chromadb
+pypdf
+openai
+
+# Evaluation
+ragas>=0.2,<0.3

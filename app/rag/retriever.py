@@ -8,7 +8,7 @@ from app.core.logger import get_logger
 
 logger = get_logger(__name__)
 
-class Retriver:
+class Retriever:
     def __init__(self, settings: Settings | None = None) -> None:
         self._settings = settings or get_settings()
 
@@ -25,7 +25,7 @@ class Retriver:
 
     def as_lc_retriever(self) -> VectorStoreRetriever:
         return self._store.as_retriever(
-            search_kwaargs = {"k": self._settings.top_k}
+            search_kwargs = {"k": self._settings.top_k}
         )
 
     def retrieve(self, question: str) -> list[Document]:
