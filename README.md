@@ -201,5 +201,5 @@ pytest -v                # no API key required for the included tests
 - [x] Persistence: users, chat history, feedback (SQLite; PostgreSQL-ready)
 - [x] RAGAS evaluation (faithfulness, answer relevancy)
 - [x] Streamlit UI wired to the authenticated API
-- [ ] Docker + docker-compose (with PostgreSQL service)
+- [x] Docker + docker-compose (with PostgreSQL service)
 - [ ] CI/CD (GitHub Actions) and deployment
