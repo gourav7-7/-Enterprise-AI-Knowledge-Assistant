@@ -13,6 +13,17 @@ load_dotenv(PROJECT_ROOT / ".env")
 
 
 @dataclass(frozen=True)
+class ChatProfile:
+    temperature: float
+    top_k: int
+
+
+@dataclass(frozen=True)
+class EvaluationProfile:
+    temperature: float
+    top_k: int
+
+@dataclass(frozen=True)
 class Settings:
     openai_api_key: str
     openai_model: str
@@ -29,6 +40,10 @@ class Settings:
     jwt_algorithm: str
     access_token_expire_minutes: int
     database_url: str
+    conversation_history_turns: int
+    # --- Evaluation ---
+    chat: ChatProfile
+    evaluation: EvaluationProfile
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -51,8 +66,16 @@ class Settings:
             jwt_secret_key=os.getenv("JWT_SECRET_KEY"),
             jwt_algorithm=os.getenv("JWT_ALGORITHM"),
             access_token_expire_minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")),
-            database_url=os.getenv("DATABASE_URL")
-        )
+            database_url=os.getenv("DATABASE_URL"),
+            conversation_history_turns=int(os.getenv("CONVERSATION_HISTORY_TURNS", "4")),
+            chat=ChatProfile(
+            temperature=float(os.getenv("CHAT_TEMPERATURE",os.getenv("OPENAI_TEMPERATURE"))),
+            top_k=int(os.getenv("CHAT_TOP_K",os.getenv("TOP_K")))),
+
+            evaluation=EvaluationProfile(
+            temperature=float(os.getenv("EVAL_TEMPERATURE","0.0")),
+            top_k=int(os.getenv("EVAL_TOP_K","4"))),
+                )
 
 
 def get_settings() -> Settings:

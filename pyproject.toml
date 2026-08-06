@@ -17,6 +17,7 @@ dependencies = [
     "uvicorn[standard]",
     "python-multipart",
     "pydantic",
+    "httpx2",
     "streamlit",
     
     # Config
@@ -32,6 +33,7 @@ dependencies = [
     
     # RAG stack
     "langchain",
+    "langchain-classic",
     "langchain-core",
     "langchain-openai",
     "langchain-community",
@@ -42,8 +44,12 @@ dependencies = [
     "openai",
     
     # Evaluation
-    "ragas>=0.2,<0.3"
+    "ragas",
+    "pytest",
+    "rapidfuzz"
     ]
+
+
 
 [project.optional-dependencies]
 dev = [

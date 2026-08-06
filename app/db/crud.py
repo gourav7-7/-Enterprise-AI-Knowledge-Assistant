@@ -41,6 +41,17 @@ def get_chat_history(db: Session, user_id: int, limit: int = 50) -> list[ChatHis
     )
     return list(db.scalars(stmt).all())
 
+def get_recent_chat_history(db: Session, user_id: int, limit: int) -> list[ChatHistory]:
+    stmt = (
+        select(ChatHistory)
+        .where(ChatHistory.user_id == user_id)
+        .order_by(ChatHistory.created_at.desc())
+        .limit(limit)
+    )
+    records = list(db.scalars(stmt).all())
+    records.reverse()
+    return records
+
 def save_feedback(db: Session, user_id: int, question: str, answer: str, rating: int, comment: str | None) -> Feedback:
     record = Feedback(
         user_id=user_id,

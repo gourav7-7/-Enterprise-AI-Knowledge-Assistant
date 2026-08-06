@@ -65,17 +65,47 @@ class DocIngestor:
 
         return {"file": path.name, "pages": len(pages), "chunks": len(chunks)}
 
-    def ingestDirectory(self, dir_path: str | Path) -> list[dict]:
-        directory = Path(dir_path)
+    def ingestDirectory(self,dir_path: str | Path | None = None,) -> list[dict]:
+        """
+        Ingest every PDF from a directory.
+
+        If no directory is supplied, defaults to data/uploads.
+        """
+
+        if dir_path is None:
+            directory = Path("data/uploads")
+        else:
+            directory = Path(dir_path)
+
+        if not directory.exists():
+            raise DocumentNotFoundError(
+                f"Directory not found: {directory}"
+            )
+
         if not directory.is_dir():
-            raise DocumentNotFoundError(f"Not a directory; {directory}")
+            raise DocumentNotFoundError(
+                f"Not a directory: {directory}"
+            )
 
         pdfs = sorted(directory.glob("*.pdf"))
-        if not pdfs:
-            raise DocumentNotFoundError(f"No PDF files found in {directory}")
 
-        logger.info("Ingesting %d PDF(s) from %s", len(pdfs), directory)
-        return [self.ingest(pdf) for pdf in pdfs]
+        if not pdfs:
+            raise DocumentNotFoundError(
+                f"No PDF files found in {directory}"
+            )
+
+        logger.info(
+            "Ingesting %d PDF(s) from %s",
+            len(pdfs),
+            directory,
+        )
+
+        results = []
+
+        for pdf in pdfs:
+            results.append(self.ingest(pdf))
+
+        return results
 
 
     def reset(self) -> None:

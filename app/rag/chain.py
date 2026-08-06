@@ -17,25 +17,35 @@ from app.rag.retriever import Retriever
 
 logger = get_logger(__name__)
 
-SYSTEM_PROMPT = (
-    "You are an enterprise knowledge assistant. "
-    "Answer the user's question using ONLY the context provided below. "
-    "If the answer is not contained in the context, say you don't know — "
-    "do not invent information. Be concise and accurate.\n\n"
-    "Context:\n{context}"
-)
+SYSTEM_PROMPT ="""You are an enterprise knowledge assistant.
 
-CONTEXTUALIZE_SYSTEM_PROMPT = (
-    "Given the chat history and the latest user question — which might reference "
-    "context in the chat history — formulate a standalone question that can be "
-    "understood without the chat history. Do NOT answer the question; just "
-    "reformulate it if needed, otherwise return it unchanged."
-)
+Answer ONLY using the retrieved context.
+
+Guidelines:
+
+- Use only the retrieved context.
+- If multiple retrieved chunks contain relevant information,
+  combine them into a concise answer.
+- If the retrieved context does not contain enough information to answer confidently, reply:
+"I don't know based on the provided documents."
+- Never invent facts.
+- Prefer concise factual answers.
+- If possible, preserve terminology from the documents.
+
+Context:
+{context}"""
+
+
+CONTEXTUALIZE_SYSTEM_PROMPT = """Given the chat history and the latest user question — which might reference 
+context in the chat history — formulate a standalone question that can be 
+understood without the chat history. Do NOT answer the question; just 
+reformulate it if needed, otherwise return it unchanged."""
+
 
 def _build_llm(settings: Settings) -> ChatOpenAI:
     return ChatOpenAI(
         model = settings.openai_model,
-        temperature= settings.openai_temperature,
+        temperature=settings.chat.temperature,
         api_key= settings.openai_api_key,
         max_retries= settings.openai_max_retries
     )
@@ -45,7 +55,7 @@ def _format_sources(documents) -> list[dict]:
         {
             "source": doc.metadata.get("source", "unknown"),
             "page": doc.metadata.get("page"),
-            "snippet": doc.page_content[:200].strip()
+            "snippet": doc.page_content[:350].strip()
         }
         for doc in documents
     ]
@@ -60,7 +70,7 @@ class RAGChain:
                 ("human", "{input}"),
             ]
         )
-        retriever = Retriever(self._settings).as_lc_retriever()
+        retriever = Retriever(self._settings,top_k=self._settings.chat.top_k,).as_lc_retriever()
         doc_chain = create_stuff_documents_chain(llm, prompt)
         self._chain = create_retrieval_chain(retriever, doc_chain)
 
@@ -77,10 +87,10 @@ class RAGChain:
         return {"answer": res["answer"], "sources": sources}
     
 class ConversationalRAGChain:
-    def __init__(self, settings: Settings | None = None) -> None:
+    def __init__(self, settings: Settings | None = None,*,top_k:int | None = None) -> None:
         self._settings = settings or get_settings()
         llm = _build_llm(self._settings)
-        base_retriever = Retriever(self._settings).as_lc_retriever()
+        base_retriever = Retriever(self._settings,top_k=self._settings.chat.top_k,).as_lc_retriever()
 
         contextualize_prompt = ChatPromptTemplate.from_messages(
             [
@@ -103,14 +113,14 @@ class ConversationalRAGChain:
         doc_chain = create_stuff_documents_chain(llm, qa_prompt)
         self._chain = create_retrieval_chain(history_aware_retriever, doc_chain)
 
-    def answer(self, question:str, chat_history: list |None = None) -> dict:
+    async def aanswer(self, question:str, chat_history: list |None = None) -> dict:
         chat_history = chat_history or []
         try:
-            res = self._chain.invoke(
+            res = await self._chain.ainvoke(
                 {"input": question, "chat_history": chat_history}
             )
         except Exception:
-            logger.exception("Conversational RAG failed for question: %s,question")
+            logger.exception("Conversational RAG failed for question: %s",question)
             return{
                 "answer": "Sorry - I ran into an error answering that. Please try again.",
                 "sources": [],
@@ -118,5 +128,5 @@ class ConversationalRAGChain:
 
             }
         sources = _format_sources(res.get("context", []))
-        logger.info("Answered quesry using &d source chunk(s)", len(sources))
+        logger.info("Answered query using %d source chunk(s)", len(sources))
         return {"answer": res["answer"], "sources": sources, "error": False}

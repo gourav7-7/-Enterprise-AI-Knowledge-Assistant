@@ -11,12 +11,16 @@ from app.core.security import decode_access_token
 from app.db import crud
 from app.db.database import get_db
 from app.db.models import User
-from app.rag.chain import RAGChain
+from app.rag.chain import ConversationalRAGChain, RAGChain
 from app.rag.ingestion import DocIngestor
 
 @lru_cache
 def get_rag_chain() -> RAGChain:
     return RAGChain()
+
+@lru_cache
+def get_conversational_rag_chain() -> ConversationalRAGChain:
+    return ConversationalRAGChain()
 
 @lru_cache
 def get_ingestor() -> DocIngestor:
