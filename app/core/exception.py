@@ -49,6 +49,10 @@ class RetrievalError(AppError):
     status_code = 500
     error_code = "retrieval_error"
 
+class GenerationError(AppError):
+    status_code = 502
+    error_code = "generation_error"
+
 class AuthError(AppError):
     status_code = 401
     error_code = "authentication_error"

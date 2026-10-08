@@ -55,7 +55,7 @@ def _format_sources(documents) -> list[dict]:
         {
             "source": doc.metadata.get("source", "unknown"),
             "page": doc.metadata.get("page"),
-            "snippet": doc.page_content[:350].strip()
+            "snippet": doc.page_content[:200].strip()
         }
         for doc in documents
     ]

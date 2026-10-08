@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from app.config import ChatProfile, EvaluationProfile, Settings
 
 from app.config import Settings
 
@@ -23,4 +24,12 @@ def fake_settings(tmp_path) -> Settings:
         access_token_expire_minutes=30,
         database_url="sqlite:///:memory:",
         conversation_history_turns=4,
+                chat=ChatProfile(
+            temperature=0.7,
+            top_k=3,
+        ),
+        evaluation=EvaluationProfile(
+            temperature=0.0,
+            top_k=3,
+        ),
     )

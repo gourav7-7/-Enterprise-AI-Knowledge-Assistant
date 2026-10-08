@@ -55,9 +55,16 @@ def test_ingest_stores_chunks(fake_settings, tmp_path, monkeypatch) -> None:
     captured: dict = {}
 
     class _FakeStore:
-            def add_documents(self, docs):
-                captured["docs"] = docs
-    
+        def get(self, **kwargs):
+            return {"ids": [], "metadatas": []}
+
+        def delete(self, ids=None, where=None):
+            pass
+
+        def add_documents(self, docs, ids=None):
+            captured["docs"] = docs
+            captured["ids"] = ids
+
     ingestor._store = _FakeStore()
     
     pdf = tmp_path / "doc.pdf"

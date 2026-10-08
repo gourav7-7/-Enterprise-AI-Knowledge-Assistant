@@ -33,7 +33,7 @@ def test_settings_from_env_loads_values() -> None:
         "COLLECTION_NAME": "docs",
         "TOP_K": "4",
         "LOG_LEVEL": "INFO",
-        "JWT_SECRET_KEY": "test-secret",
+        "JWT_SECRET_KEY": "test-secret-for-unit-tests-1234567890",
         "JWT_ALGORITHM": "HS256",
         "ACCESS_TOKEN_EXPIRE_MINUTES": "30",
         "DATABASE_URL": "sqlite:///:memory:",
@@ -49,3 +49,7 @@ def test_settings_from_env_loads_values() -> None:
     assert settings.chunk_size == 500
     assert settings.top_k == 4
     assert settings.conversation_history_turns == 6
+    assert settings.chat.temperature == 0.5
+    assert settings.chat.top_k == 4
+    assert settings.evaluation.temperature == 0.0
+    assert settings.evaluation.top_k == 4
