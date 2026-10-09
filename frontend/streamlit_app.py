@@ -191,8 +191,8 @@ def login_screen() -> None:
 
     with tab_register:
         with st.form("register_form"):
-            u = st.text_input("Username (3–50 chars)")
-            p = st.text_input("Password (min 6 chars)", type="password")
+            u = st.text_input("Username (3–50 chars: letters, numbers, . _ -)")
+            p = st.text_input("Password (min 10 chars)", type="password")
             if st.form_submit_button("Register", use_container_width=True):
                 do_register(u, p)
 
