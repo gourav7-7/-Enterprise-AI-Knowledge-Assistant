@@ -61,6 +61,10 @@ class ConflictError(AppError):
     status_code = 409
     error_code = "conflict"
 
+class NotFoundError(AppError):
+    status_code = 404
+    error_code = "not_found"
+
 def register_exception_handlers(app: Any) -> None:
 
     from fastapi import Request

@@ -110,19 +110,35 @@ def do_upload(file) -> dict | None:
     st.error(_extract_error(r))
     return None
 
-
-def do_query(question: str) -> dict | None:
-    r = api_request("POST", "/query", json={"question": question})
+def do_create_session() -> int | None:
+    r = api_request("POST", "/sessions")
     if r is None:
         return None
-    if r.status_code == 200:
-        return r.json()
+    if r.status_code == 201:
+        return r.json()["id"]
     st.error(_extract_error(r))
     return None
 
 
-def do_history() -> list:
-    r = api_request("GET", "/history")
+def do_query(question: str, session_id: int | None = None) -> dict | None:
+    payload = {"question": question}
+    if session_id is not None:
+        payload["session_id"] = session_id
+    r = api_request("POST", "/query", json=payload)
+    if r is None:
+        return None
+    if r.status_code == 200:
+        return r.json()
+    if r.status_code == 404:
+        # conversation no longer exists server-side -> next question starts a new one
+        st.session_state.pop("session_id", None)
+    st.error(_extract_error(r))
+    return None
+
+
+def do_history(session_id: int | None = None) -> list:
+    params = {"session_id": session_id} if session_id is not None else None
+    r = api_request("GET", "/history", params=params)
     if r is None or r.status_code != 200:
         return []
     return r.json()
@@ -203,9 +219,13 @@ def main_app() -> None:
 
     with st.sidebar:
         st.write(f"Signed in as **{st.session_state.get('username', '')}**")
+        if st.button("➕ New chat", use_container_width=True):
+            st.session_state.messages = []
+            st.session_state.pop("session_id", None)
+            st.rerun()
         if st.button("Log out", use_container_width=True):
             api_request("POST", "/auth/logout")  # stateless: server just acknowledges
-            for k in ("token", "username", "messages", "active_doc"):
+            for k in ("token", "username", "messages", "active_doc", "session_id"):
                 st.session_state.pop(k, None)
             st.rerun()
 
@@ -228,7 +248,10 @@ def main_app() -> None:
         show_history = st.checkbox("Show my history")
 
     st.title("📄 AI Knowledge Assistant")
-    st.caption("Answers are grounded in your uploaded PDFs. Each question is answered independently.")
+    st.caption(
+        "Answers are grounded in your uploaded PDFs. Follow-up questions use the "
+        "current chat; click “New chat” to start a fresh topic."
+    )
 
     if show_history:
         with st.expander("My past questions (from the server)", expanded=True):
@@ -253,13 +276,19 @@ def main_app() -> None:
     # new question
     prompt = st.chat_input("Ask a question about your uploaded documents...")
     if prompt:
+        # one conversation per chat; created lazily on the first question
+        if st.session_state.get("session_id") is None:
+            st.session_state.session_id = do_create_session()
+        if st.session_state.session_id is None:
+            st.stop()  # creation failed; error already shown
+
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                result = do_query(prompt)
+                result = do_query(prompt, st.session_state.get("session_id"))
             if result:
                 st.markdown(result["answer"])
                 render_sources(result.get("sources", []))

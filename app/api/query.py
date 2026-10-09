@@ -2,6 +2,9 @@
 
 Async endpoint : awaits the LLM call so the event loop stays free during the
 network round-trip.
+
+History is scoped to one conversation: pass session_id (from POST /sessions) to
+continue it; omit it to use the legacy single thread.
 """
 
 from __future__ import annotations
@@ -12,7 +15,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.core.exception import GenerationError
+from app.core.exception import GenerationError, NotFoundError
 from app.db import crud
 from app.db.database import get_db
 from app.db.models import ChatHistory, User
@@ -39,19 +42,29 @@ async def query(
     db: Session = Depends(get_db),
 ) -> QueryResponse:
     settings = get_settings()
+    session_id = payload.session_id
+
+    # Ownership check: a user can only continue their own conversations.
+    if session_id is not None:
+        session = await run_in_threadpool(
+            crud.get_chat_session, db, session_id, current_user.id
+        )
+        if session is None:
+            raise NotFoundError("Conversation not found.")
+
     recent_records = await run_in_threadpool(
         crud.get_recent_chat_history,
         db,
         current_user.id,
         settings.conversation_history_turns,
+        session_id,
     )
     chat_history = _to_chat_history(recent_records)
 
     result = await chain.aanswer(payload.question, chat_history=chat_history)
 
-    # The chain reports failures as error=True with an apology string. Surface a
-    # real error and do NOT persist it, or the apology would be replayed to the
-    # LLM as prior conversation on every later turn.
+    # Failed generations are surfaced as an error and never persisted, or the
+    # apology text would be replayed to the LLM as prior conversation.
     if result.get("error"):
         raise GenerationError(
             "The assistant could not generate an answer right now. Please try again."
@@ -64,6 +77,9 @@ async def query(
         payload.question,
         result["answer"],
         result["sources"],
+        session_id,
     )
 
-    return QueryResponse(answer=result["answer"], sources=result["sources"])
+    return QueryResponse(
+        answer=result["answer"], sources=result["sources"], session_id=session_id
+    )
