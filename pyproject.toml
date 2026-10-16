@@ -11,26 +11,25 @@ requires-python = ">=3.10"
 license = { text = "MIT" }
 keywords = ["rag", "langchain", "openai", "knowledge-base", "fastapi"]
 
+# Runtime (API) dependencies only.
 dependencies = [
     # Web / API
     "fastapi",
     "uvicorn[standard]",
     "python-multipart",
     "pydantic",
-    "httpx2",
-    "streamlit",
-    
+
     # Config
     "python-dotenv",
-    
+
     # Auth
     "pyjwt",
     "pwdlib[argon2]",
-    
+
     # Database
     "sqlalchemy",
     "psycopg[binary]",
-    
+
     # RAG stack
     "langchain",
     "langchain-classic",
@@ -42,19 +41,24 @@ dependencies = [
     "chromadb",
     "pypdf",
     "openai",
-    
-    # Evaluation
-    "ragas",
-    "pytest",
-    "rapidfuzz"
-    ]
-
-
+]
 
 [project.optional-dependencies]
+ui = [
+    "streamlit",
+    "requests",
+]
+eval = [
+    "ragas",
+    "pandas",
+    "datasets",
+]
 dev = [
     "pytest>=8.0",
-    "pytest-mock>=3.0"
+    "pytest-mock>=3.0",
+    "httpx",          # required by FastAPI's TestClient
+    "rapidfuzz",
+    "ruff",
 ]
 
 [tool.hatch.build.targets.wheel]

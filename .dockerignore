@@ -19,3 +19,5 @@ gaproj/
 *.zip
 .vscode/
 .idea/
+constraints.txt
+.venv-check/
