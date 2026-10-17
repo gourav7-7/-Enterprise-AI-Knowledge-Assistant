@@ -64,7 +64,7 @@ def main() -> None:
 
     print("\nRetriever Configuration")
 
-    print(f"Search Type       : MMR")
+    print("Search Type       : MMR")
     print(f"Top K             : {settings.chat.top_k}")
     print(
         f"Fetch K           : {max(20, settings.chat.top_k * 4)}"
@@ -81,7 +81,7 @@ def main() -> None:
 
     except Exception as exc:
 
-        print(f"Unable to read collection statistics.")
+        print("Unable to read collection statistics.")
         print(exc)
 
     print("\nStatus")

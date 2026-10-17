@@ -11,6 +11,7 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
 import pytest
+
 from app.config import ChatProfile, EvaluationProfile, Settings
 
 

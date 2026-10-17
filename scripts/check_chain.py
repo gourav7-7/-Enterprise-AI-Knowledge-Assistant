@@ -79,7 +79,7 @@ async def interactive_chat() -> None:
     print(f"Model       : {settings.openai_model}")
     print(f"Temperature : {settings.chat.temperature}")
     print(f"Top K       : {settings.chat.top_k}")
-    print(f"History     : Enabled")
+    print("History     : Enabled")
     print(LINE)
 
     while True:

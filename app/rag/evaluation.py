@@ -8,16 +8,15 @@ from typing import Any
 import pandas as pd
 from datasets import Dataset
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-
-from app.rag import _vertexai_shim
 from ragas import evaluate
 from ragas.embeddings import LangchainEmbeddingsWrapper
 from ragas.llms import LangchainLLMWrapper
 from ragas.metrics import (
     Faithfulness,
-    ResponseRelevancy,
     LLMContextPrecisionWithoutReference,
+    ResponseRelevancy,
 )
+
 from app.config import Settings, get_settings
 from app.core.logger import get_logger
 from app.rag.chain import ConversationalRAGChain

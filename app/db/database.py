@@ -36,7 +36,6 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False
 
 def init_db(retries: int = 10, delay: float = 2.0) -> None:
     """Create tables. Retries because in Docker the app can start before Postgres."""
-    from app.db import models
 
     last_error: Exception | None = None
     for attempt in range(1, retries + 1):

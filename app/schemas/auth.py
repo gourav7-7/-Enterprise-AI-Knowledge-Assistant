@@ -45,7 +45,7 @@ class RegisterRequest(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def _check_password(self) -> "RegisterRequest":
+    def _check_password(self) -> RegisterRequest:
         lowered = self.password.lower()
         if lowered in _COMMON_PASSWORDS or len(set(self.password)) < 4:
             raise PydanticCustomError(

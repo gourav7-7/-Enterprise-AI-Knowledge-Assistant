@@ -10,12 +10,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api import auth, documents, feedback, history, query
+from app.api import auth, documents, feedback, history, query, sessions
 from app.core.exception import register_exception_handlers
 from app.core.logger import get_logger
 from app.db.database import init_db
 from app.schemas.health import HealthResponse
-from app.api import auth, documents, feedback, history, query, sessions
 
 logger = get_logger(__name__)
 

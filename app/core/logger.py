@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
 import sys
-import json
 
 _LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
 _DATE_FORMAT = "%Y-%m-%d %H:%M:%S"

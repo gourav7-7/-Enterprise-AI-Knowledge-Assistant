@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from langchain_classic.chains import (
-    create_retrieval_chain,
     create_history_aware_retriever,
+    create_retrieval_chain,
 )
 from langchain_classic.chains.combine_documents import (
     create_stuff_documents_chain,
 )
-
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
 
@@ -36,9 +35,9 @@ Context:
 {context}"""
 
 
-CONTEXTUALIZE_SYSTEM_PROMPT = """Given the chat history and the latest user question — which might reference 
-context in the chat history — formulate a standalone question that can be 
-understood without the chat history. Do NOT answer the question; just 
+CONTEXTUALIZE_SYSTEM_PROMPT = """Given the chat history and the latest user question — which might reference
+context in the chat history — formulate a standalone question that can be
+understood without the chat history. Do NOT answer the question; just
 reformulate it if needed, otherwise return it unchanged."""
 
 
@@ -78,14 +77,14 @@ class RAGChain:
         res = self._chain.invoke({"input": question})
         sources = _format_sources(res.get("context", []))
         logger.info("Answered query using %d source chunk(s)", len(sources))
-        return {"answer": res["answer"], "sources": sources} 
+        return {"answer": res["answer"], "sources": sources}
 
     async def aanswer(self, question: str) -> dict:
         res = await self._chain.ainvoke({"input": question})
         sources = _format_sources(res.get("context", []))
         logger.info("Answer query (async) using %d source chunk(s)", len(sources))
         return {"answer": res["answer"], "sources": sources}
-    
+
 class ConversationalRAGChain:
     def __init__(self, settings: Settings | None = None,*,top_k:int | None = None) -> None:
         self._settings = settings or get_settings()

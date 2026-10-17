@@ -1,5 +1,5 @@
 from __future__ import annotations
- 
+
 from functools import lru_cache
 
 from fastapi import Depends
@@ -13,6 +13,7 @@ from app.db.database import get_db
 from app.db.models import User
 from app.rag.chain import ConversationalRAGChain, RAGChain
 from app.rag.ingestion import DocIngestor
+
 
 @lru_cache
 def get_rag_chain() -> RAGChain:

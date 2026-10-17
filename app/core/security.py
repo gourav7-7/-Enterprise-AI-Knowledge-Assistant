@@ -6,8 +6,8 @@ import jwt
 from pwdlib import PasswordHash
 
 from app.config import Settings, get_settings
-from app.core.logger import get_logger
 from app.core.exception import AuthError
+from app.core.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -37,7 +37,7 @@ def decode_access_token(token: str, settings: Settings | None = None) -> str:
         raise AuthError("Token has expired") from exc
     except jwt.InvalidTokenError as exc:  # base class for all PyJWT decode errors
         raise AuthError("Invalid token") from exc
- 
+
     subject = payload.get("sub")
     if subject is None:
         raise AuthError("Invalid token payload")

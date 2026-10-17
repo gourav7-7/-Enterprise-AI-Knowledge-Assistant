@@ -12,9 +12,8 @@ from __future__ import annotations
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
- 
-from app.config import Settings, get_settings
 
+from app.config import Settings, get_settings
 
 QA_PROMPT = PromptTemplate(
     input_variables=["context", "question"],

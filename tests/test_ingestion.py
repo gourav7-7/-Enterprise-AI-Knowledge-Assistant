@@ -1,6 +1,7 @@
 from __future__ import annotations
-from langchain_core.documents import Document
+
 import pytest
+from langchain_core.documents import Document
 
 from app.core.exception import DocumentNotFoundError, IngestionError
 from app.rag import ingestion
@@ -66,12 +67,12 @@ def test_ingest_stores_chunks(fake_settings, tmp_path, monkeypatch) -> None:
             captured["ids"] = ids
 
     ingestor._store = _FakeStore()
-    
+
     pdf = tmp_path / "doc.pdf"
     pdf.write_bytes(b"%PDF-1.4 fake")  # passes the .exists() / suffix checks
-    
+
     result = ingestor.ingest(pdf)
-    
+
     assert result["chunks"] > 0
     assert result["pages"] == 1
     assert "docs" in captured and len(captured["docs"]) == result["chunks"]

@@ -42,7 +42,7 @@ class FakeStore:
 
     def add_documents(self, documents, ids=None) -> None:
         self.add_calls += 1
-        for doc, doc_id in zip(documents, ids):
+        for doc, doc_id in zip(documents, ids, strict=False):
             self.docs[doc_id] = (doc.page_content, dict(doc.metadata))
 
     def delete_collection(self) -> None:

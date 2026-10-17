@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStoreRetriever
 from langchain_openai import OpenAIEmbeddings
+
 from app.config import Settings, get_settings
 from app.core.logger import get_logger
 

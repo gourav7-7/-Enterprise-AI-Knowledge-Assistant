@@ -60,7 +60,7 @@ def main() -> None:
     print(f"Collection : {settings.collection_name}")
     print(f"Top K      : {settings.chat.top_k}")
     print(f"Embedding  : {settings.embedding_model}")
-    print(f"Search     : MMR")
+    print("Search     : MMR")
     print(LINE)
 
     while True:
