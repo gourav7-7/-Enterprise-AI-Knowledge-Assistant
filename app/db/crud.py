@@ -5,6 +5,7 @@ import json
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.exception import NotFoundError
 from app.db.models import ChatHistory, ChatSession, Feedback, User
 
 
@@ -74,6 +75,13 @@ def save_chat(
     db.refresh(record)
     return record
 
+def get_chat_turn(db: Session, chat_id: int, user_id: int) -> ChatHistory | None:
+    """Return a chat turn only when it belongs to the caller."""
+    stmt = select(ChatHistory).where(
+        ChatHistory.id == chat_id,
+        ChatHistory.user_id == user_id,
+    )
+    return db.scalar(stmt)
 
 def get_chat_history(
     db: Session, user_id: int, limit: int = 50, session_id: int | None = None
@@ -110,15 +118,19 @@ def get_recent_chat_history(
 def save_feedback(
     db: Session,
     user_id: int,
-    question: str,
-    answer: str,
+    chat_id: int,
     rating: int,
     comment: str | None,
 ) -> Feedback:
+    chat = get_chat_turn(db, chat_id, user_id)
+    if chat is None:
+        raise NotFoundError("Chat turn not found.")
+
     record = Feedback(
         user_id=user_id,
-        question=question,
-        answer=answer,
+        chat_id=chat.id,
+        question=chat.question,
+        answer=chat.answer,
         rating=rating,
         comment=comment,
     )

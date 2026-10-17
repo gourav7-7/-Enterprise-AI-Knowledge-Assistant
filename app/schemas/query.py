@@ -32,6 +32,7 @@ class Source(BaseModel):
 
 
 class QueryResponse(BaseModel):
+    chat_id: int = Field(..., strict=True, ge=1, description="Saved chat turn ID")
     answer: str
     sources: list[Source] = Field(default_factory=list)
     session_id: int | None = None

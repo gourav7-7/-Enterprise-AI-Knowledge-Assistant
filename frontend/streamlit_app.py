@@ -144,11 +144,11 @@ def do_history(session_id: int | None = None) -> list:
     return r.json()
 
 
-def do_feedback(question: str, answer: str, rating: int, comment: str) -> bool:
-    r = api_request("POST", "/feedback", json={
-        "question": question, "answer": answer,
-        "rating": rating, "comment": comment or None,
-    })
+def do_feedback(chat_id: int, rating: int, comment: str) -> bool:
+    r = api_request(
+        "POST", "/feedback",
+        json={"chat_id": chat_id, "rating": rating, "comment": comment or None},
+    )
     if r is None:
         return False
     if r.status_code == 201:
@@ -179,16 +179,23 @@ def feedback_widget(index: int, message: dict) -> None:
     if message.get("feedback_sent"):
         st.caption("✓ Feedback submitted")
         return
+
+    chat_id = message.get("chat_id")
+    if type(chat_id) is not int or chat_id <= 0:
+        st.caption(
+            "Feedback is unavailable for this message. "
+            "Ask a new question to rate its answer."
+        )
+        return
+
     with st.expander("Rate this answer"):
         with st.form(f"fb_{index}"):
             rating = st.slider("Rating", 1, 5, 4)
             comment = st.text_input("Comment (optional)")
             if st.form_submit_button("Submit feedback"):
-                if do_feedback(message.get("question", ""), message.get("content", ""),
-                               rating, comment):
+                if do_feedback(chat_id, rating, comment):
                     message["feedback_sent"] = True
                     st.rerun()
-
 
 # --------------------------------------------------------------------------- #
 # Screens
@@ -298,6 +305,7 @@ def main_app() -> None:
                     "content": result["answer"],
                     "sources": result.get("sources", []),
                     "question": prompt,
+                    "chat_id": result["chat_id"],
                 })
                 feedback_widget(new_index, st.session_state.messages[-1])
 

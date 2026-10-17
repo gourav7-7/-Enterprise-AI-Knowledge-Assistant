@@ -42,6 +42,7 @@ class Feedback(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    chat_id: Mapped[int | None] = mapped_column(ForeignKey("chat_history.id"), nullable=True, index=True)
     question: Mapped[str] = mapped_column(Text)
     answer: Mapped[str] = mapped_column(Text)
     rating: Mapped[int] = mapped_column(Integer)

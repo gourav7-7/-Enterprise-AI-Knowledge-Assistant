@@ -36,16 +36,18 @@ def ingestor() -> MagicMock:
 def upload_dir(tmp_path, monkeypatch):
     path = tmp_path / "uploads"
     monkeypatch.setattr(documents_module, "UPLOAD_DIR", path)
-    return path
+    return path / "1"
 
 
-def _client(ingestor: MagicMock, authenticated: bool = True) -> TestClient:
+def _client(
+    ingestor: MagicMock, authenticated: bool = True, *, user_id: int = 1
+) -> TestClient:
     app = FastAPI()
     register_exception_handlers(app)
     app.include_router(router)
     app.dependency_overrides[get_ingestor] = lambda: ingestor
     if authenticated:
-        app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=1)
+        app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=user_id)
     return TestClient(app)
 
 
@@ -75,7 +77,7 @@ def test_upload_valid_pdf_is_saved_and_ingested(ingestor, upload_dir) -> None:
         "status": "ingested",
     }
     assert (upload_dir / "notes.pdf").read_bytes() == PDF_BYTES
-    ingestor.ingest.assert_called_once_with(upload_dir / "notes.pdf")
+    ingestor.ingest.assert_called_once_with(upload_dir / "notes.pdf", owner_id=1)
 
 
 def test_upload_reports_already_ingested_status(ingestor, upload_dir) -> None:
@@ -136,7 +138,7 @@ def test_upload_strips_directory_parts_from_filename(
     assert response.status_code == 200
     assert (upload_dir / "evil.pdf").exists()
     assert not (tmp_path / "evil.pdf").exists()  # did not escape the upload dir
-    ingestor.ingest.assert_called_once_with(upload_dir / "evil.pdf")
+    ingestor.ingest.assert_called_once_with(upload_dir / "evil.pdf", owner_id=1)
 
 
 def test_upload_removes_new_file_when_ingestion_fails(ingestor, upload_dir) -> None:
@@ -178,3 +180,22 @@ def test_safe_filename_sanitizes(raw: str, expected: str) -> None:
 def test_safe_filename_rejects_invalid_names(raw) -> None:
     with pytest.raises(IngestionError):
         documents_module._safe_filename(raw)
+
+def test_same_filename_is_isolated_between_users(ingestor, upload_dir) -> None:
+    first_bytes = PDF_BYTES + b"user-one"
+    second_bytes = PDF_BYTES + b"user-two"
+
+    first = _post(_client(ingestor, user_id=1), "notes.pdf", first_bytes)
+    second = _post(_client(ingestor, user_id=2), "notes.pdf", second_bytes)
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+
+    first_path = upload_dir / "notes.pdf"
+    second_path = upload_dir.parent / "2" / "notes.pdf"
+
+    assert first_path.read_bytes() == first_bytes
+    assert second_path.read_bytes() == second_bytes
+    assert ingestor.ingest.call_count == 2
+    ingestor.ingest.assert_any_call(first_path, owner_id=1)
+    ingestor.ingest.assert_any_call(second_path, owner_id=2)

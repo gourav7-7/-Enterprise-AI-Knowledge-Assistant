@@ -61,8 +61,11 @@ async def query(
     )
     chat_history = _to_chat_history(recent_records)
 
-    result = await chain.aanswer(payload.question, chat_history=chat_history)
-
+    result = await chain.aanswer(
+        payload.question,
+        chat_history=chat_history,
+        owner_id=current_user.id,
+    )
     # Failed generations are surfaced as an error and never persisted, or the
     # apology text would be replayed to the LLM as prior conversation.
     if result.get("error"):
@@ -70,7 +73,7 @@ async def query(
             "The assistant could not generate an answer right now. Please try again."
         )
 
-    await run_in_threadpool(
+    record = await run_in_threadpool(
         crud.save_chat,
         db,
         current_user.id,
@@ -80,6 +83,4 @@ async def query(
         session_id,
     )
 
-    return QueryResponse(
-        answer=result["answer"], sources=result["sources"], session_id=session_id
-    )
+    return QueryResponse(chat_id=record.id,answer=result["answer"],sources=result["sources"],session_id=session_id)

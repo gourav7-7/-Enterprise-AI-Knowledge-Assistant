@@ -56,11 +56,19 @@ class DocIngestor:
             persist_directory=self._settings.chroma_dir,
         )
 
-    def _find_existing(self, file_hash: str) -> tuple[list[str], list[dict]]:
-        got = self._store.get(where={"file_hash": file_hash}, include=["metadatas"])
+    def _find_existing(
+        self, file_hash: str, owner_id: int
+    ) -> tuple[list[str], list[dict]]:
+        got = self._store.get(
+            where={"$and": [{"owner_id": owner_id}, {"file_hash": file_hash}]},
+            include=["metadatas"],
+        )
         return got["ids"], got["metadatas"]
 
-    def ingest(self, file_path: str | Path) -> dict:
+    def ingest(self, file_path: str | Path, *, owner_id: int) -> dict:
+        if type(owner_id) is not int or owner_id <= 0:
+            raise IngestionError("owner_id must be a positive integer.")
+
         path = Path(file_path)
         if not path.exists():
             raise DocumentNotFoundError(f"File not found: {path}")
@@ -72,7 +80,7 @@ class DocIngestor:
         file_hash = _file_sha256(path)
 
         # Idempotency: identical content that is fully stored is not re-embedded.
-        ids, metas = self._find_existing(file_hash)
+        ids, metas = self._find_existing(file_hash, owner_id)
         if ids and len(ids) == (metas[0] or {}).get("n_chunks"):
             logger.info("%s already ingested (%d chunks); skipping.", path.name, len(ids))
             return {
@@ -98,15 +106,19 @@ class DocIngestor:
         if not chunks:
             raise IngestionError(f"Splitting produced no chunks for {path.name}.")
 
-        chunk_ids = [f"{file_hash[:16]}-{i:05d}" for i in range(len(chunks))]
+        chunk_ids = [
+            f"{owner_id}-{file_hash}-{i:05d}" for i in range(len(chunks))
+        ]
         for chunk in chunks:
-            raw_src = chunk.metadata.get("source", path.name)
-            chunk.metadata["source"] = Path(raw_src).name
+            chunk.metadata["source"] = path.name
+            chunk.metadata["owner_id"] = owner_id
             chunk.metadata["file_hash"] = file_hash
             chunk.metadata["n_chunks"] = len(chunks)
 
         # A re-upload under the same filename replaces the older version.
-        self._store.delete(where={"source": path.name})
+        self._store.delete(
+            where={"$and": [{"owner_id": owner_id}, {"source": path.name}]}
+        )
 
         logger.info("Split into %d chunks; embedding and storing...", len(chunks))
         self._store.add_documents(chunks, ids=chunk_ids)
@@ -123,13 +135,16 @@ class DocIngestor:
             "status": "ingested",
         }
 
-    def ingestDirectory(self, dir_path: str | Path | None = None) -> list[dict]:
-        """
-        Ingest every PDF from a directory.
+    def ingestDirectory(self, dir_path: str | Path | None = None, *, owner_id: int) -> list[dict]:
+        """Ingest PDFs for one owner; default to data/uploads/<owner_id>."""
+        if type(owner_id) is not int or owner_id <= 0:
+            raise IngestionError("owner_id must be a positive integer.")
 
-        If no directory is supplied, defaults to data/uploads.
-        """
-        directory = Path("data/uploads") if dir_path is None else Path(dir_path)
+        directory = (
+            Path("data/uploads") / str(owner_id)
+            if dir_path is None
+            else Path(dir_path)
+        )
 
         if not directory.exists():
             raise DocumentNotFoundError(f"Directory not found: {directory}")
@@ -141,7 +156,70 @@ class DocIngestor:
             raise DocumentNotFoundError(f"No PDF files found in {directory}")
 
         logger.info("Ingesting %d PDF(s) from %s", len(pdfs), directory)
-        return [self.ingest(pdf) for pdf in pdfs]
+        return [self.ingest(pdf, owner_id=owner_id) for pdf in pdfs]
+
+    def list_documents(self, *, owner_id: int) -> list[dict]:
+        """List indexed documents belonging to one owner."""
+        if type(owner_id) is not int or owner_id <= 0:
+            raise IngestionError("owner_id must be a positive integer.")
+
+        result = self._store.get(
+            where={"owner_id": owner_id},
+            include=["metadatas"],
+        )
+        grouped: dict[str, list[dict]] = {}
+        for metadata in result["metadatas"] or []:
+            if not metadata or metadata.get("owner_id") != owner_id:
+                continue
+            file_hash = metadata.get("file_hash")
+            if not isinstance(file_hash, str) or not file_hash:
+                continue
+            grouped.setdefault(file_hash, []).append(metadata)
+
+        documents = []
+        for file_hash, metas in grouped.items():
+            documents.append(
+                {
+                    "document_id": file_hash,
+                    "filename": metas[0].get("source", "unknown"),
+                    "pages": _page_count(metas),
+                    "chunks": len(metas),
+                }
+            )
+        return sorted(
+            documents,
+            key=lambda item: (item["filename"], item["document_id"]),
+        )
+
+    def delete_document(self, document_id: str, *, owner_id: int) -> dict:
+        """Delete one owner's indexed document and return its stored filenames."""
+        if type(owner_id) is not int or owner_id <= 0:
+            raise IngestionError("owner_id must be a positive integer.")
+        if (
+            not isinstance(document_id, str)
+            or len(document_id) != 64
+            or any(char not in "0123456789abcdef" for char in document_id)
+        ):
+            raise DocumentNotFoundError("Document not found.")
+
+        where = {"$and": [{"owner_id": owner_id}, {"file_hash": document_id}]}
+        result = self._store.get(where=where, include=["metadatas"])
+        if not result["ids"]:
+            raise DocumentNotFoundError("Document not found.")
+
+        filenames = sorted(
+            {
+                metadata["source"]
+                for metadata in result["metadatas"] or []
+                if metadata and isinstance(metadata.get("source"), str)
+            }
+        )
+        self._store.delete(where=where)
+        return {
+            "document_id": document_id,
+            "chunks": len(result["ids"]),
+            "filenames": filenames,
+        }
 
     def reset(self) -> None:
         logger.warning("Resetting collection '%s'", self._settings.collection_name)
@@ -162,9 +240,17 @@ def _cli() -> None:
     parser.add_argument(
         "--reset",
         action="store_true",
-        help="Clear the collection before ingesting",
+        help="Clear the entire collection for ALL users before ingesting",
+    )
+    parser.add_argument(
+        "--owner-id",
+        type=int,
+        required=True,
+        help="Document owner user ID",
     )
     args = parser.parse_args()
+    if args.owner_id <= 0:
+        parser.error("--owner-id must be a positive integer")
 
     ingestor = DocIngestor()
     if args.reset:
@@ -172,13 +258,13 @@ def _cli() -> None:
 
     target = Path(args.path)
     if target.is_dir():
-        res = ingestor.ingestDirectory(target)
+        res = ingestor.ingestDirectory(target, owner_id=args.owner_id)
         total = sum(r["chunks"] for r in res)
         print(f"Ingested {len(res)} file(s), {total} chunks total: ")
         for r in res:
             print(f" -{r['file']}: {r['pages']} pages -> {r['chunks']} chunks ({r['status']})")
     else:
-        r = ingestor.ingest(target)
+        r = ingestor.ingest(target, owner_id=args.owner_id)
         print(f"{r['status']}: {r['file']}: {r['pages']} pages -> {r['chunks']} chunks")
 
 

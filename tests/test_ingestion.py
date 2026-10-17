@@ -28,14 +28,14 @@ def test_splitter_preserves_metadata(fake_settings) -> None:
 def test_missing_file_raises(fake_settings, tmp_path) -> None:
     ingestor = DocIngestor(fake_settings)
     with pytest.raises(DocumentNotFoundError):
-        ingestor.ingest(tmp_path / "does_not_exist.pdf")
+        ingestor.ingest(tmp_path / "does_not_exist.pdf", owner_id=1)
 
 def test_non_odf_raises(fake_settings, tmp_path) -> None:
     not_pdf = tmp_path / "notes.txt"
     not_pdf.write_text("hello")
     ingestor = DocIngestor(fake_settings)
     with pytest.raises(IngestionError):
-        ingestor.ingest(not_pdf)
+        ingestor.ingest(not_pdf, owner_id=1)
 
 def test_ingest_stores_chunks(fake_settings, tmp_path, monkeypatch) -> None:
     class _FakeLoader:
@@ -71,10 +71,17 @@ def test_ingest_stores_chunks(fake_settings, tmp_path, monkeypatch) -> None:
     pdf = tmp_path / "doc.pdf"
     pdf.write_bytes(b"%PDF-1.4 fake")  # passes the .exists() / suffix checks
 
-    result = ingestor.ingest(pdf)
+    result = ingestor.ingest(pdf, owner_id=1)
 
     assert result["chunks"] > 0
     assert result["pages"] == 1
     assert "docs" in captured and len(captured["docs"]) == result["chunks"]
     # source normalised to the bare filename for clean citations
     assert all(d.metadata["source"] == "doc.pdf" for d in captured["docs"])
+    assert all(d.metadata["owner_id"] == 1 for d in captured["docs"])
+    assert all(
+        chunk_id == f"1-{doc.metadata['file_hash']}-{index:05d}"
+        for index, (doc, chunk_id) in enumerate(
+            zip(captured["docs"], captured["ids"], strict=True)
+        )
+    )

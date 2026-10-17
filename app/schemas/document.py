@@ -10,3 +10,9 @@ class UploadResponse(BaseModel):
     pages: int
     chunks: int
     status: str = "ingested"
+
+class DocumentSummary(BaseModel):
+    document_id: str
+    filename: str
+    pages: int
+    chunks: int

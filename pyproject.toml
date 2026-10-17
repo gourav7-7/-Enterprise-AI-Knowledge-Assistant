@@ -71,7 +71,7 @@ pythonpath = ["."]
 [tool.ruff]
 target-version = "py310"
 line-length = 100
-extend-exclude = ["data", "gaproj"]
+extend-exclude = ["data", "gaproj", "notebooks/chunk_size_experiments.ipynb"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]

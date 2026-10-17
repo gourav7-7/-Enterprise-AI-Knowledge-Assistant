@@ -95,6 +95,7 @@ def client(
                 "session_id": session_id,
             }
         )
+        return SimpleNamespace(id=1000 + len(saved))
 
     monkeypatch.setattr(query_module.crud, "get_recent_chat_history", _fake_recent)
     monkeypatch.setattr(query_module.crud, "get_chat_session", _fake_get_session)
@@ -110,12 +111,13 @@ def test_query_calls_aanswer_and_returns_response(
 
     assert response.status_code == 200
     body = response.json()
+    assert body["chat_id"] == 1001
     assert body["answer"] == "The sky is blue."
     assert body["sources"] == [{"source": "sky.pdf", "page": 1, "snippet": "..."}]
     assert body["session_id"] is None
 
     fake_chain.aanswer.assert_awaited_once_with(
-        "What color is the sky?", chat_history=[]
+        "What color is the sky?", chat_history=[], owner_id=1
     )
 
 
@@ -216,3 +218,21 @@ def test_query_unknown_or_foreign_session_returns_404(
     assert response.json()["error"]["code"] == "not_found"
     fake_chain.aanswer.assert_not_awaited()
     assert saved == []
+
+@pytest.mark.parametrize("user_id", [1, 2])
+def test_query_uses_authenticated_owner_not_request_body(
+    client, fake_chain, fake_user, history_calls, saved, user_id
+) -> None:
+    fake_user.id = user_id
+    response = client.post(
+        "/query",
+        json={"question": "Who owns these documents?", "owner_id": 999},
+    )
+
+    assert response.status_code == 200
+    fake_chain.aanswer.assert_awaited_once_with(
+        "Who owns these documents?", chat_history=[], owner_id=user_id
+    )
+    assert history_calls == [{"user_id": user_id, "session_id": None}]
+    assert len(saved) == 1
+    assert saved[0]["user_id"] == user_id

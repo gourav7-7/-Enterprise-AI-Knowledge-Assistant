@@ -1,7 +1,4 @@
-"""POST /feedback : record a rating/comment on an answer.
-
-Plain `def` endpoint: it does a small blocking file write, threadpooled by FastAPI.
-"""
+"""POST /feedback: record feedback on a chat turn owned by the caller."""
 
 from __future__ import annotations
 
@@ -16,13 +13,17 @@ from app.schemas.feedback import FeedbackRequest, FeedbackResponse
 
 router = APIRouter(tags=["feedback"])
 
+
 @router.post("/feedback", response_model=FeedbackResponse, status_code=201)
-def feedback(payload: FeedbackRequest, current_user: User = Depends(get_current_user),db: Session = Depends(get_db)) -> FeedbackResponse:
+def feedback(
+    payload: FeedbackRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> FeedbackResponse:
     record = crud.save_feedback(
         db,
         user_id=current_user.id,
-        question=payload.question,
-        answer=payload.answer,
+        chat_id=payload.chat_id,
         rating=payload.rating,
         comment=payload.comment,
     )

@@ -17,8 +17,8 @@ from app.core.exception import IngestionError
 from app.core.logger import get_logger
 from app.db.models import User
 from app.dependencies import get_current_user, get_ingestor
-from app.rag.ingestion import DocIngestor
-from app.schemas.document import UploadResponse
+from app.rag.ingestion import DocIngestor, _file_sha256
+from app.schemas.document import DocumentSummary, UploadResponse
 
 logger = get_logger(__name__)
 
@@ -48,9 +48,10 @@ def upload(
 ) -> UploadResponse:
     name = _safe_filename(file.filename)
 
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    dest = UPLOAD_DIR / name
-    tmp = UPLOAD_DIR / f".{uuid.uuid4().hex}.part"
+    owner_dir = UPLOAD_DIR / str(current_user.id)
+    owner_dir.mkdir(parents=True, exist_ok=True)
+    dest = owner_dir / name
+    tmp = owner_dir / f".{uuid.uuid4().hex}.part"
     existed = dest.exists()
     size = 0
 
@@ -72,7 +73,7 @@ def upload(
 
     # Incremental ingest (no reset) — adds to the corpus.
     try:
-        summary = ingestor.ingest(dest)
+        summary = ingestor.ingest(dest, owner_id=current_user.id)
     except Exception:
         if not existed:
             dest.unlink(missing_ok=True)
@@ -83,4 +84,47 @@ def upload(
         filename=summary["file"],
         pages=summary["pages"],
         chunks=summary["chunks"],
+        status=summary["status"],
     )
+
+@router.get("/documents", response_model=list[DocumentSummary])
+def list_documents(
+    current_user: User = Depends(get_current_user),
+    ingestor: DocIngestor = Depends(get_ingestor),
+) -> list[DocumentSummary]:
+    documents = ingestor.list_documents(owner_id=current_user.id)
+    return [DocumentSummary(**document) for document in documents]
+
+@router.delete("/documents/{document_id}")
+def delete_document(
+    document_id: str,
+    current_user: User = Depends(get_current_user),
+    ingestor: DocIngestor = Depends(get_ingestor),
+) -> dict:
+    owner_dir = UPLOAD_DIR / str(current_user.id)
+    if owner_dir.is_symlink():
+        raise IngestionError("Upload directory must not be a symbolic link.")
+
+    matching_files = []
+    if owner_dir.is_dir():
+        for path in owner_dir.iterdir():
+            if path.is_symlink() or not path.is_file() or path.suffix.lower() != ".pdf":
+                continue
+            if _file_sha256(path) == document_id:
+                matching_files.append(path)
+
+    result = ingestor.delete_document(document_id, owner_id=current_user.id)
+
+    deleted_files = []
+    for path in matching_files:
+        if path.is_symlink():
+            continue
+        if path.exists() and _file_sha256(path) == document_id:
+            path.unlink()
+            deleted_files.append(path.name)
+
+    return {
+        "document_id": result["document_id"],
+        "chunks_deleted": result["chunks"],
+        "files_deleted": sorted(deleted_files),
+    }
